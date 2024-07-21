@@ -2,34 +2,18 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const app = express();
-const port = 5000;
+const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
-// // MySQL database connection
-// const db = mysql.createConnection({
-//   host: 'localhost',
-//   user: 'root',
-//   password: '',
-//   database: 'img_search'
-// });
-
 // MySQL database connection
 const db = mysql.createConnection({
-  host: '34.174.158.123',
-  user: 'remote',
-  password: 'Password!*',
-  database: 'imgsearchdb'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
-
-// // MySQL database connection
-// const db = mysql.createConnection({
-//   host: 'database-1.clu0wem405k1.us-east-1.rds.amazonaws.com',
-//   user: 'admin',
-//   password: 'Password!*1234',
-//   database: 'img_search'
-// });
 
 db.connect(err => {
   if (err) throw err;
@@ -77,6 +61,7 @@ app.patch('/images/:id/:action', (req, res) => {
     res.sendStatus(200);
   });
 });
+
 // Upload image and thumbnail
 app.post('/upload', (req, res) => {
   const { name, nickname, tags, url, timestamp, thumbnailUrl } = req.body;
@@ -101,7 +86,6 @@ app.post('/upload', (req, res) => {
   });
 });
 
-
 // Get comments by image ID
 app.get('/comments', (req, res) => {
   const { imageId } = req.query;
@@ -112,7 +96,7 @@ app.get('/comments', (req, res) => {
   });
 });
 
-
+// Post comment
 app.post('/comments', (req, res) => {
   const { imageId, nickname, comment } = req.body;
   const timestamp = new Date().toISOString(); // Ensure timestamp is in ISO 8601 format
@@ -122,7 +106,6 @@ app.post('/comments', (req, res) => {
     res.json({ id: result.insertId });
   });
 });
-
 
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
