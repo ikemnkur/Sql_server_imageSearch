@@ -9,33 +9,16 @@ app.use(express.json());
 
 // MySQL database connection
 const db = mysql.createConnection({
-  host: process.env.DB_HOST || '34.174.158.123',
-  user: process.env.DB_USER || 'remote',
-  password: process.env.DB_PASSWORD || 'Password!*',
-  database: process.env.DB_NAME || 'imgsearchdb'
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME
 });
 
 db.connect(err => {
   if (err) throw err;
   console.log('MySQL connected...');
 });
-
-
-const lastRequestTimestamps = {};
-
-// Middleware to check request rate
-const rateLimiter = (req, res, next) => {
-  const ip = req.ip;
-  const now = Date.now();
-
-  if (lastRequestTimestamps[ip] && now - lastRequestTimestamps[ip] < 3000) {
-    return res.status(429).send('Too many requests. Please wait a few seconds before trying again.');
-  }
-
-  lastRequestTimestamps[ip] = now;
-  next();
-};
-
 
 // Get thumbnails
 app.get('/thumbnails', (req, res) => {
@@ -57,7 +40,7 @@ app.get('/images/:id', (req, res) => {
 });
 
 // Update view count
-app.patch('/images/:id/views', rateLimiter, (req, res) => {
+app.patch('/images/:id/views', (req, res) => {
   const { id } = req.params;
   const sql = 'UPDATE images SET views = views + 1 WHERE id = ?';
   db.query(sql, [id], (err, result) => {
@@ -65,7 +48,6 @@ app.patch('/images/:id/views', rateLimiter, (req, res) => {
     res.sendStatus(200);
   });
 });
-
 
 // Update likes or dislikes
 app.patch('/images/:id/:action', (req, res) => {
@@ -80,27 +62,13 @@ app.patch('/images/:id/:action', (req, res) => {
   });
 });
 
-// Function to convert timestamp to MySQL format
-const convertTimestampToMySQL = (timestamp) => {
-  const date = new Date(timestamp);
-  const yyyy = date.getFullYear();
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  const dd = String(date.getDate()).padStart(2, '0');
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mi = String(date.getMinutes()).padStart(2, '0');
-  const ss = String(date.getSeconds()).padStart(2, '0');
-  return `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
-};
-
 // Upload image and thumbnail
 app.post('/upload', (req, res) => {
   const { name, nickname, tags, url, timestamp, thumbnailUrl } = req.body;
   const tagsStr = tags.join(',');
 
-  const formattedTimestamp = convertTimestampToMySQL(timestamp);
-
-  const sqlImage = 'INSERT INTO images (url, name, tags, timestamp, nickname, tag) VALUES (?, ?, ?, ?, ?, ?)';
-  db.query(sqlImage, [url, name, JSON.stringify(tagsStr.split(",")), formattedTimestamp, nickname, tagsStr], (err, result) => {
+  const sqlImage = 'INSERT INTO images (url, name, tags, timestamp, nickname) VALUES (?, ?, ?, ?, ?)';
+  db.query(sqlImage, [url, name, tagsStr, timestamp, nickname], (err, result) => {
     if (err) {
       console.error('Error inserting image:', err);
       return res.status(500).send('Error inserting image');
@@ -108,7 +76,7 @@ app.post('/upload', (req, res) => {
     const imageId = result.insertId;
 
     const sqlThumbnail = 'INSERT INTO thumbnails (url, name, tags, timestamp, nickname) VALUES (?, ?, ?, ?, ?)';
-    db.query(sqlThumbnail, [thumbnailUrl, name, JSON.stringify(tagsStr.split(",")), formattedTimestamp, nickname], (err, result) => {
+    db.query(sqlThumbnail, [thumbnailUrl, name, tagsStr, timestamp, nickname], (err, result) => {
       if (err) {
         console.error('Error inserting thumbnail:', err);
         return res.status(500).send('Error inserting thumbnail');
@@ -117,9 +85,6 @@ app.post('/upload', (req, res) => {
     });
   });
 });
-
-
-
 
 // Get comments by image ID
 app.get('/comments', (req, res) => {
@@ -134,7 +99,7 @@ app.get('/comments', (req, res) => {
 // Post comment
 app.post('/comments', (req, res) => {
   const { imageId, nickname, comment } = req.body;
-  const timestamp = convertTimestampToMySQL(new Date().toISOString());
+  const timestamp = new Date().toISOString(); // Ensure timestamp is in ISO 8601 format
   const sql = 'INSERT INTO comments (imageId, nickname, comment, timestamp) VALUES (?, ?, ?, ?)';
   db.query(sql, [imageId, nickname, comment, timestamp], (err, result) => {
     if (err) throw err;
