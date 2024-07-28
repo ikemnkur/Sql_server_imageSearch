@@ -3,6 +3,7 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const app = express();
 const port = process.env.PORT || 5000;
+const startTime = new Date();
 
 app.use(cors());
 app.use(express.json());
@@ -15,11 +16,16 @@ const db = mysql.createConnection({
   database: process.env.DB_NAME || 'imgsearchdb'
 });
 
-db.connect(err => {
-  if (err) throw err;
-  console.log('MySQL connected...');
-});
+let dbConnected = false;
 
+db.connect(err => {
+  if (err) {
+    console.error('MySQL connection error:', err);
+  } else {
+    console.log('MySQL connected...');
+    dbConnected = true;
+  }
+});
 
 const lastRequestTimestamps = {};
 
@@ -28,7 +34,7 @@ const rateLimiter = (req, res, next) => {
   const ip = req.ip;
   const now = Date.now();
 
-  if (lastRequestTimestamps[ip] && now - lastRequestTimestamps[ip] < 3000) {
+  if (lastRequestTtimestamps[ip] && now - lastRequestTimestamps[ip] < 3000) {
     return res.status(429).send('Too many requests. Please wait a few seconds before trying again.');
   }
 
@@ -36,6 +42,21 @@ const rateLimiter = (req, res, next) => {
   next();
 };
 
+// Root route to display server status
+app.get('/', (req, res) => {
+  const currentTime = new Date();
+  const uptime = Math.floor((currentTime - startTime) / 1000); // uptime in seconds
+  const hours = Math.floor(uptime / 3600);
+  const minutes = Math.floor((uptime % 3600) / 60);
+  const seconds = uptime % 60;
+  const formattedUptime = `${hours}h ${minutes}m ${seconds}s`;
+
+  const statusMessage = dbConnected
+    ? `Server is connected to the SQL database. Uptime: ${formattedUptime}.`
+    : `Server is not connected to the SQL database. Uptime: ${formattedUptime}.`;
+
+  res.send(statusMessage);
+});
 
 // Get thumbnails
 app.get('/thumbnails', (req, res) => {
@@ -65,7 +86,6 @@ app.patch('/images/:id/views', rateLimiter, (req, res) => {
     res.sendStatus(200);
   });
 });
-
 
 // Update likes or dislikes
 app.patch('/images/:id/:action', (req, res) => {
@@ -117,9 +137,6 @@ app.post('/upload', (req, res) => {
     });
   });
 });
-
-
-
 
 // Get comments by image ID
 app.get('/comments', (req, res) => {
