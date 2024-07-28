@@ -1,20 +1,22 @@
 {
   "name": "sql_server_imagesearch",
-  "version": "1.0.0",
-  "description": "",
-  "main": "SQLserver.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
-  },
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "express": "^4.19.2",
-    "mongoose": "^8.4.4",
-    "mysql2": "^3.10.3"
-  },
-  "engines": {
-    "node": "14.x"
+    "version": "1.0.0",
+    "description": "An app to view, upload and comment on images",
+    "main": "server.js",
+    "scripts": {
+      "start": "node server.js"
+    },
+    "engines": {
+      "node": "14.x"
+    },
+    "dependencies": {
+      "cors": "^2.8.5",
+      "express": "^4.17.1",
+      "mysql2": "^2.2.5",
+      "ejs": "^3.1.6",
+      "ws": "^7.4.6"
+    },
+    "devDependencies": {},
+    "author": "",
+    "license": "ISC"
   }
-}
