@@ -88,6 +88,31 @@ app.patch('/images/:id/views', rateLimiter, (req, res) => {
   });
 });
 
+// Update view count
+app.post('/images/:id/views', rateLimiter, (req, res) => {
+  const { id } = req.params;
+  
+  if (!id) {
+    return res.status(400).send('Image ID is required');
+  }
+
+  const sql = 'UPDATE images SET views = views + 1 WHERE id = ?';
+  
+  db.query(sql, [id], (err, result) => {
+    if (err) {
+      console.error('Database error:', err);
+      return res.status(500).send('Internal Server Error');
+    }
+
+    if (result.affectedRows === 0) {
+      return res.status(404).send('Image not found');
+    }
+
+    res.status(200).send({ message: 'Views updated successfully' });
+  });
+});
+
+
 // Update likes or dislikes
 app.patch('/images/:id/:action', (req, res) => {
   const { id, action } = req.params;
