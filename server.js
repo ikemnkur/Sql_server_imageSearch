@@ -198,7 +198,7 @@ app.get('/', (req, res) => {
 <body>
     <div class="container">
         <h1>Server Status</h1>
-        <p id="statusMessage">Loading...</p>
+        <p id="statusMessage">${statusMessage}</p>
         <h2>Visit Logs</h2>
         <div>
             <h3>Image Views</h3>
@@ -265,12 +265,12 @@ app.get('/', (req, res) => {
             Object.entries(logs).forEach(([imageId, data]) => {
                 data.visits.forEach(visit => {
                     const row = document.createElement('tr');
-                    row.innerHTML = `
-                      < td > ${ imageId }</td >
-                        <td>${data.ip}</td>
-                        <td>${visit.date}</td>
-                        <td>${visit.time}</td>
-                    `;
+                    row.innerHTML = \`
+                        <td>\${imageId}</td>
+                        <td>\${data.ip}</td>
+                        <td>\${visit.date}</td>
+                        <td>\${visit.time}</td>
+                    \`;
                     logTableBody.appendChild(row);
                 });
             });
@@ -283,10 +283,10 @@ app.get('/', (req, res) => {
 
             Object.entries(logs).forEach(([imageId, data]) => {
                 const row = document.createElement('tr');
-                row.innerHTML = `
-      < td > ${ imageId }</td >
-    <td>${data.visits.length}</td>
-                `;
+                row.innerHTML = \`
+                    <td>\${imageId}</td>
+                    <td>\${data.visits.length}</td>
+                \`;
                 logTableBodyViews.appendChild(row);
             });
         }
@@ -391,7 +391,7 @@ app.get('/', (req, res) => {
 </body>
 </html>
 
-    ');
+    `);
   });
 });
 
