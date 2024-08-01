@@ -30,18 +30,52 @@ db.connect(err => {
 
 const lastRequestTimestamps = {};
 
+// // Middleware to check request rate
+// const rateLimiter = (req, res, next) => {
+//   const ip = req.ip;
+//   const now = Date.now();
+
+//   if (lastRequestTtimestamps[ip] && now - lastRequestTimestamps[ip] < 3000) {
+//     return res.status(429).send('Too many requests. Please wait a few seconds before trying again.');
+//   }
+
+
+
+//   lastRequestTimestamps[ip] = now;
+//   next();
+// };
+
+// Object to store timestamps of last requests for rate limiting
+const lastRequestTimestamps = {};
+
 // Middleware to check request rate
 const rateLimiter = (req, res, next) => {
+  // Extract IP address from the request
   const ip = req.ip;
+
+  // Get current timestamp
   const now = Date.now();
 
-  if (lastRequestTtimestamps[ip] && now - lastRequestTimestamps[ip] < 3000) {
+  // Check if the IP has made a recent request within 3 seconds
+  if (lastRequestTimestamps[ip] && now - lastRequestTimestamps[ip] < 3000) {
+    // Return a 429 response if too many requests are made
     return res.status(429).send('Too many requests. Please wait a few seconds before trying again.');
   }
 
+  // Log the visit to the console
+  const imageId = req.params.id; // Assuming the image ID is in the request params
+  const currentDate = new Date();
+  const formattedDate = currentDate.toLocaleDateString('en-US');
+  const formattedTime = currentDate.toLocaleTimeString('en-US');
+  console.log(`IP: ${ip} visited Image# ${imageId} on ${formattedDate}@${formattedTime}`);
+
+  // Update last request timestamp for the IP
   lastRequestTimestamps[ip] = now;
+
+  // Continue to the next middleware function
   next();
 };
+
 
 // Root route to display server status
 app.get('/', (req, res) => {
