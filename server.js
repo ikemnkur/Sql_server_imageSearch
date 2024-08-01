@@ -1,6 +1,8 @@
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
+const fs = require('fs'); // Import the fs module for file operations
+const path = require('path'); // Import the path module to handle file paths
 const app = express();
 const port = process.env.PORT || 5000;
 const startTime = new Date();
@@ -28,25 +30,56 @@ db.connect(err => {
   }
 });
 
-// const lastRequestTimestamps = {};
-
-// // Middleware to check request rate
-// const rateLimiter = (req, res, next) => {
-//   const ip = req.ip;
-//   const now = Date.now();
-
-//   if (lastRequestTtimestamps[ip] && now - lastRequestTimestamps[ip] < 3000) {
-//     return res.status(429).send('Too many requests. Please wait a few seconds before trying again.');
-//   }
-
-
-
-//   lastRequestTimestamps[ip] = now;
-//   next();
-// };
-
 // Object to store timestamps of last requests for rate limiting
 const lastRequestTimestamps = {};
+
+// Path to the JSON log file
+const logFilePath = path.join(__dirname, 'visitLogs.json');
+
+// Function to log visits to a JSON file
+const logVisitToFile = (ip, imageId) => {
+  const currentDate = new Date();
+  const formattedDate = currentDate.toLocaleDateString('en-US');
+  const formattedTime = currentDate.toLocaleTimeString('en-US');
+
+  // Create a new log entry
+  const logEntry = {
+    date: formattedDate,
+    time: formattedTime
+  };
+
+  // Read the existing log file
+  fs.readFile(logFilePath, 'utf8', (err, data) => {
+    let logs;
+    if (err) {
+      // If the file does not exist, start with an empty object
+      logs = {};
+    } else {
+      // Parse the existing JSON data
+      logs = JSON.parse(data);
+    }
+
+    // Check if the image ID already exists in the logs
+    if (!logs[`image#${imageId}`]) {
+      logs[`image#${imageId}`] = {
+        ip: ip,
+        visits: []
+      };
+    }
+
+    // Add the new log entry to the visits array
+    logs[`image#${imageId}`].visits.push(logEntry);
+
+    // Write the updated logs back to the file
+    fs.writeFile(logFilePath, JSON.stringify(logs, null, 2), (err) => {
+      if (err) {
+        console.error('Error writing to log file:', err);
+      } else {
+        console.log(`Logged visit: IP ${ip} visited Image#${imageId}`);
+      }
+    });
+  });
+};
 
 // Middleware to check request rate
 const rateLimiter = (req, res, next) => {
@@ -62,12 +95,9 @@ const rateLimiter = (req, res, next) => {
     return res.status(429).send('Too many requests. Please wait a few seconds before trying again.');
   }
 
-  // Log the visit to the console
+  // Log the visit to the console and file
   const imageId = req.params.id; // Assuming the image ID is in the request params
-  const currentDate = new Date();
-  const formattedDate = currentDate.toLocaleDateString('en-US');
-  const formattedTime = currentDate.toLocaleTimeString('en-US');
-  console.log(`IP: ${ip} visited Image# ${imageId} on ${formattedDate}@${formattedTime}`);
+  logVisitToFile(ip, imageId);
 
   // Update last request timestamp for the IP
   lastRequestTimestamps[ip] = now;
@@ -75,7 +105,6 @@ const rateLimiter = (req, res, next) => {
   // Continue to the next middleware function
   next();
 };
-
 
 // Root route to display server status
 app.get('/', (req, res) => {
@@ -125,13 +154,13 @@ app.patch('/images/:id/views', rateLimiter, (req, res) => {
 // Update view count
 app.post('/images/:id/views', rateLimiter, (req, res) => {
   const { id } = req.params;
-  
+
   if (!id) {
     return res.status(400).send('Image ID is required');
   }
 
   const sql = 'UPDATE images SET views = views + 1 WHERE id = ?';
-  
+
   db.query(sql, [id], (err, result) => {
     if (err) {
       console.error('Database error:', err);
@@ -145,7 +174,6 @@ app.post('/images/:id/views', rateLimiter, (req, res) => {
     res.status(200).send({ message: 'Views updated successfully' });
   });
 });
-
 
 // Update likes or dislikes
 app.patch('/images/:id/:action', (req, res) => {
@@ -218,10 +246,6 @@ app.post('/comments', (req, res) => {
     res.json({ id: result.insertId });
   });
 });
-
-// app.listen(port, () => {
-//   console.log(`Server running on port ${port}`);
-// });
 
 app.listen(port, hostname, () => {
   console.log(`Server running at http://${hostname}:${port}/`);
