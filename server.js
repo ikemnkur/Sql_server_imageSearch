@@ -106,20 +106,194 @@ const rateLimiter = (req, res, next) => {
   next();
 };
 
-// Root route to display server status
+// Endpoint to get visit logs
+app.get('/logs', (req, res) => {
+  fs.readFile(logFilePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading log file:', err);
+      return res.status(500).send('Error reading log file');
+    }
+    res.json(JSON.parse(data));
+  });
+});
+
+// Root route to display server status and logs
 app.get('/', (req, res) => {
-  const currentTime = new Date();
-  const uptime = Math.floor((currentTime - startTime) / 1000); // uptime in seconds
-  const hours = Math.floor(uptime / 3600);
-  const minutes = Math.floor((uptime % 3600) / 60);
-  const seconds = uptime % 60;
-  const formattedUptime = `${hours}h ${minutes}m ${seconds}s`;
+  fs.readFile(logFilePath, 'utf8', (err, data) => {
+    if (err) {
+      console.error('Error reading log file:', err);
+      data = '{}'; // Default to empty object if there's an error
+    }
 
-  const statusMessage = dbConnected
-    ? `Server is connected to the SQL database. Uptime: ${formattedUptime}.`
-    : `Server is not connected to the SQL database. Uptime: ${formattedUptime}.`;
+    const currentTime = new Date();
+    const uptime = Math.floor((currentTime - startTime) / 1000); // uptime in seconds
+    const hours = Math.floor(uptime / 3600);
+    const minutes = Math.floor((uptime % 3600) / 60);
+    const seconds = uptime % 60;
+    const formattedUptime = `${hours}h ${minutes}m ${seconds}s`;
 
-  res.send(statusMessage);
+    const statusMessage = dbConnected
+      ? `Server is connected to the SQL database. Uptime: ${formattedUptime}.`
+      : `Server is not connected to the SQL database. Uptime: ${formattedUptime}.`;
+
+    // Serve the HTML page
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Visit Logs</title>
+          <style>
+              body {
+                  font-family: Arial, sans-serif;
+                  text-align: center;
+                  background-color: #f9f9f9;
+                  color: #333;
+              }
+              .container {
+                  max-width: 800px;
+                  margin: 0 auto;
+                  padding: 20px;
+              }
+              table {
+                  width: 100%;
+                  border-collapse: collapse;
+                  margin-top: 20px;
+              }
+              th, td {
+                  padding: 10px;
+                  border: 1px solid #ccc;
+              }
+              th {
+                  background-color: #eee;
+              }
+              input[type="text"] {
+                  padding: 8px;
+                  width: 200px;
+                  margin-bottom: 10px;
+                  border: 1px solid #ccc;
+                  border-radius: 4px;
+              }
+              select {
+                  padding: 8px;
+                  margin-bottom: 10px;
+                  border: 1px solid #ccc;
+                  border-radius: 4px;
+              }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <h1>Server Status</h1>
+              <p>${statusMessage}</p>
+              <h2>Visit Logs</h2>
+              <input type="text" id="searchInput" placeholder="Search...">
+              <select id="filterSelect">
+                  <option value="date">Date</option>
+                  <option value="time">Time</option>
+                  <option value="ip">IP</option>
+                  <option value="imageId">Image ID</option>
+              </select>
+              <button onclick="sortLogs()">Sort</button>
+              <table>
+                  <thead>
+                      <tr>
+                          <th>Image ID</th>
+                          <th>IP</th>
+                          <th>Date</th>
+                          <th>Time</th>
+                      </tr>
+                  </thead>
+                  <tbody id="logTableBody">
+                      <!-- Log entries will be populated here -->
+                  </tbody>
+              </table>
+          </div>
+          <script>
+              // Function to load logs from the server
+              function loadLogs() {
+                  fetch('/logs')
+                      .then(response => response.json())
+                      .then(logs => {
+                          displayLogs(logs);
+                      })
+                      .catch(error => console.error('Error loading logs:', error));
+              }
+
+              // Function to display logs in the table
+              function displayLogs(logs) {
+                  const logTableBody = document.getElementById('logTableBody');
+                  logTableBody.innerHTML = ''; // Clear existing entries
+
+                  Object.entries(logs).forEach(([imageId, data]) => {
+                      data.visits.forEach(visit => {
+                          const row = document.createElement('tr');
+                          row.innerHTML = \`
+                              <td>\${imageId}</td>
+                              <td>\${data.ip}</td>
+                              <td>\${visit.date}</td>
+                              <td>\${visit.time}</td>
+                          \`;
+                          logTableBody.appendChild(row);
+                      });
+                  });
+              }
+
+              // Function to filter logs based on search input
+              function filterLogs() {
+                  const searchInput = document.getElementById('searchInput').value.toLowerCase();
+                  const logTableBody = document.getElementById('logTableBody');
+                  const rows = logTableBody.getElementsByTagName('tr');
+
+                  for (let i = 0; i < rows.length; i++) {
+                      const cells = rows[i].getElementsByTagName('td');
+                      let match = false;
+
+                      for (let j = 0; j < cells.length; j++) {
+                          if (cells[j].innerText.toLowerCase().includes(searchInput)) {
+                              match = true;
+                              break;
+                          }
+                      }
+
+                      rows[i].style.display = match ? '' : 'none';
+                  }
+              }
+
+              // Function to sort logs based on selected criteria
+              function sortLogs() {
+                  const filterSelect = document.getElementById('filterSelect').value;
+                  const logTableBody = document.getElementById('logTableBody');
+                  const rows = Array.from(logTableBody.getElementsByTagName('tr'));
+
+                  rows.sort((a, b) => {
+                      const aText = a.getElementsByTagName('td')[filterSelect === 'imageId' ? 0 : filterSelect === 'ip' ? 1 : filterSelect === 'date' ? 2 : 3].innerText;
+                      const bText = b.getElementsByTagName('td')[filterSelect === 'imageId' ? 0 : filterSelect === 'ip' ? 1 : filterSelect === 'date' ? 2 : 3].innerText;
+
+                      if (filterSelect === 'date' || filterSelect === 'time') {
+                          return new Date(aText) - new Date(bText);
+                      } else {
+                          return aText.localeCompare(bText);
+                      }
+                  });
+
+                  // Re-attach sorted rows to the table
+                  logTableBody.innerHTML = '';
+                  rows.forEach(row => logTableBody.appendChild(row));
+              }
+
+              // Event listeners for search and sorting
+              document.getElementById('searchInput').addEventListener('input', filterLogs);
+              document.getElementById('filterSelect').addEventListener('change', sortLogs);
+
+              // Load logs on page load
+              window.onload = loadLogs;
+          </script>
+      </body>
+      </html>
+    `);
+  });
 });
 
 // Get thumbnails
