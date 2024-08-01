@@ -28,7 +28,7 @@ db.connect(err => {
   }
 });
 
-const lastRequestTimestamps = {};
+// const lastRequestTimestamps = {};
 
 // // Middleware to check request rate
 // const rateLimiter = (req, res, next) => {
