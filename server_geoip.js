@@ -58,7 +58,7 @@ const logVisitToDatabase = async (ip, imageId) => {
 
   try {
     // Fetch location data using ip-api
-    const response = await axios.get(`http://ip-api.com/json/${ip}`);
+    const response = await axios.get(`ip-api.com/json`);
     const { country, regionName, city, lat, lon } = response.data;
 
     const sql = `
