@@ -14,7 +14,7 @@
     <div>Longitude: <span id="longitude"></span></div>
     <div>IP: <span id="ip"></span></div>
     <script>
-      $.getJSON('https://geolocation-db.com/json/')
+      $.getJSON('ip-api.com/json')
          .done (function(location) {
             $('#country').html(location.country_name);
             $('#state').html(location.state);

@@ -44,14 +44,15 @@ const rateLimiter = (req, res, next) => {
 
   // Log the visit to the SQL database
   const imageId = req.params.id;
-  logVisitToDatabase(ip, imageId);
+  const nickname = req.params.nickname;
+  logVisitToDatabase(ip, imageId, nickname);
 
   lastRequestTimestamps[ip] = now;
   next();
 };
 
 // Function to log visits to the SQL database
-const logVisitToDatabase = async (ip, imageId) => {
+const logVisitToDatabase = async (ip, imageId, nickname) => {
   const currentDate = new Date();
   const formattedDate = currentDate.toISOString().split('T')[0];
   const formattedTime = currentDate.toTimeString().split(' ')[0];
@@ -62,10 +63,10 @@ const logVisitToDatabase = async (ip, imageId) => {
     const { country, regionName, city, lat, lon } = response.data;
 
     const sql = `
-      INSERT INTO logs (image_id, ip, visit_date, visit_time, country, region, city, latitude, longitude)
+      INSERT INTO logs (image_id, nickname, ip, visit_date, visit_time, country, region, city, latitude, longitude)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    db.query(sql, [imageId, ip, formattedDate, formattedTime, country, regionName, city, lat, lon], (err, result) => {
+    db.query(sql, [imageId, nickname, ip, formattedDate, formattedTime, country, regionName, city, lat, lon], (err, result) => {
       if (err) {
         console.error('Error inserting log into database:', err);
       } else {
@@ -135,17 +136,47 @@ app.patch('/images/:id/views', rateLimiter, (req, res) => {
   });
 });
 
-// Update view count
+// // Update view count
+// app.post('/images/:id/views', rateLimiter, (req, res) => {
+//   const { id } = req.params;
+
+//   if (!id) {
+//     return res.status(400).send('Image ID is required');
+//   }
+
+//   const sql = 'UPDATE images SET views = views + 1 WHERE id = ?';
+
+//   db.query(sql, [id], (err, result) => {
+//     if (err) {
+//       console.error('Database error:', err);
+//       return res.status(500).send('Internal Server Error');
+//     }
+
+//     if (result.affectedRows === 0) {
+//       return res.status(404).send('Image not found');
+//     }
+
+//     res.status(200).send({ message: 'Views updated successfully' });
+//   });
+// });
+
+// Update view count and log the nickname
 app.post('/images/:id/views', rateLimiter, (req, res) => {
   const { id } = req.params;
+  const { nickname } = req.body;
 
   if (!id) {
     return res.status(400).send('Image ID is required');
   }
 
-  const sql = 'UPDATE images SET views = views + 1 WHERE id = ?';
+  if (!nickname) {
+    return res.status(400).send('Nickname is required');
+  }
 
-  db.query(sql, [id], (err, result) => {
+  // Update the views count for the image
+  const sqlUpdateViews = 'UPDATE images SET views = views + 1 WHERE id = ?';
+
+  db.query(sqlUpdateViews, [id], (err, result) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).send('Internal Server Error');
@@ -155,9 +186,28 @@ app.post('/images/:id/views', rateLimiter, (req, res) => {
       return res.status(404).send('Image not found');
     }
 
-    res.status(200).send({ message: 'Views updated successfully' });
+    // Log the view along with the nickname
+    const sqlLogView = `
+      INSERT INTO logs (image_id, nickname, ip, visit_date, visit_time)
+      VALUES (?, ?, ?, ?, ?)
+    `;
+
+    const currentDate = new Date();
+    const formattedDate = currentDate.toISOString().split('T')[0];
+    const formattedTime = currentDate.toTimeString().split(' ')[0];
+
+    db.query(sqlLogView, [id, nickname, req.ip, formattedDate, formattedTime], (err, result) => {
+      if (err) {
+        console.error('Error logging view into database:', err);
+        return res.status(500).send('Internal Server Error');
+      }
+
+      res.status(200).send({ message: 'Views updated and logged successfully' });
+    });
   });
 });
+
+
 
 // Update likes or dislikes
 app.patch('/images/:id/:action', (req, res) => {
