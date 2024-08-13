@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
+const axios = require('axios'); // Add axios for making HTTP requests
 const app = express();
 const port = process.env.PORT || 5000;
 const startTime = new Date();
@@ -50,19 +51,42 @@ const rateLimiter = (req, res, next) => {
 };
 
 // Function to log visits to the SQL database
-const logVisitToDatabase = (ip, imageId) => {
+const logVisitToDatabase = async (ip, imageId) => {
   const currentDate = new Date();
   const formattedDate = currentDate.toISOString().split('T')[0];
   const formattedTime = currentDate.toTimeString().split(' ')[0];
 
-  const sql = "INSERT INTO logs (image_id, ip, visit_date, visit_time) VALUES (?, ?, ?, ?)";
-  db.query(sql, [imageId, ip, formattedDate, formattedTime], (err, result) => {
-    if (err) {
-      console.error('Error inserting log into database:', err);
-    } else {
-      console.log(`Logged visit: IP ${ip} visited Image#${imageId}`);
-    }
-  });
+  try {
+    // Fetch location data using ip-api
+    const response = await axios.get(`http://ip-api.com/json/${ip}`);
+    const { country, regionName, city, lat, lon } = response.data;
+
+    const sql = `
+      INSERT INTO logs (image_id, ip, visit_date, visit_time, country, region, city, latitude, longitude)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    db.query(sql, [imageId, ip, formattedDate, formattedTime, country, regionName, city, lat, lon], (err, result) => {
+      if (err) {
+        console.error('Error inserting log into database:', err);
+      } else {
+        console.log(`Logged visit: IP ${ip} visited Image#${imageId} from ${city}, ${regionName}, ${country}`);
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching GeoIP data:', error);
+    // Log without location data if the GeoIP lookup fails
+    const fallbackSql = `
+      INSERT INTO logs (image_id, ip, visit_date, visit_time)
+      VALUES (?, ?, ?, ?)
+    `;
+    db.query(fallbackSql, [imageId, ip, formattedDate, formattedTime], (err, result) => {
+      if (err) {
+        console.error('Error inserting fallback log into database:', err);
+      } else {
+        console.log(`Logged visit: IP ${ip} visited Image#${imageId} (Location unknown)`);
+      }
+    });
+  }
 };
 
 // Endpoint to get visit logs

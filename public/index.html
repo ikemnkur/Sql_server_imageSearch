@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visit Logs</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Server Status</h1>
+        <p id="statusMessage"></p>
+        <h2>Visit Logs</h2>
+        <div>
+            <h3>Image Views</h3>
+            <input type="text" id="searchInputViews" placeholder="Search...">
+            <select id="filterSelectViews">
+                <option value="views">Views</option>
+                <option value="imageId">Image ID</option>
+            </select>
+            <button onclick="sortLogsViews()">Sort</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Image ID</th>
+                        <th>Number of Views</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBodyViews">
+                    <!-- Log entries will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        <div>
+            <h3>Visit Details</h3>
+            <input type="text" id="searchInput" placeholder="Search...">
+            <select id="filterSelect">
+                <option value="date">Date</option>
+                <option value="time">Time</option>
+                <option value="ip">IP</option>
+                <option value="imageId">Image ID</option>
+            </select>
+            <button onclick="sortLogs()">Sort</button>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Image ID</th>
+                        <th>IP</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="logTableBody">
+                    <!-- Log entries will be populated here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <script src="scripts.js"></script>
+</body>
+</html>
