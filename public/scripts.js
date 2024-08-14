@@ -1,7 +1,10 @@
+let allLogs = [];
+
 function loadLogs() {
     fetch('/logs')
         .then(response => response.json())
         .then(logs => {
+            allLogs = logs;
             displayLogs(logs);
             displayViewCounts(logs);
         })
@@ -18,7 +21,7 @@ function displayLogs(logs) {
             <td>${log.image_id}</td>
             <td>${log.nickname || 'N/A'}</td>
             <td>${log.ip}</td>
-            <td>${log.visit_date}</td>
+            <td>${log.visit_date.split(' ')[0].replace("T05:00:00.000Z","")}</td>
             <td>${log.visit_time}</td>
             <td>${log.country || 'N/A'}</td>
             <td>${log.region || 'N/A'}</td>
@@ -74,6 +77,27 @@ function filterLogs() {
     }
 }
 
+
+function filterLogs() {
+    const searchInput = document.getElementById('searchInput').value.toLowerCase();
+    const logTableBody = document.getElementById('logTableBody');
+    const rows = logTableBody.getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        let match = false;
+
+        for (let j = 0; j < cells.length; j++) {
+            if (cells[j].innerText.toLowerCase().includes(searchInput)) {
+                match = true;
+                break;
+            }
+        }
+
+        rows[i].style.display = match ? '' : 'none';
+    }
+}
+
 function filterLogsViews() {
     const searchInputViews = document.getElementById('searchInputViews').value.toLowerCase();
     const logTableBodyViews = document.getElementById('logTableBodyViews');
@@ -96,6 +120,7 @@ function filterLogsViews() {
 
 function sortLogs() {
     const filterSelect = document.getElementById('filterSelect').value;
+    const sortAscending = document.getElementById('sortAscending').checked;
     const logTableBody = document.getElementById('logTableBody');
     const rows = Array.from(logTableBody.getElementsByTagName('tr'));
 
@@ -111,14 +136,25 @@ function sortLogs() {
             'city': 7
         }[filterSelect] || 0;
 
-        const aText = a.getElementsByTagName('td')[columnIndex].innerText;
-        const bText = b.getElementsByTagName('td')[columnIndex].innerText;
+        let aText = a.getElementsByTagName('td')[columnIndex].innerText;
+        let bText = b.getElementsByTagName('td')[columnIndex].innerText;
 
-        if (filterSelect === 'date' || filterSelect === 'time') {
-            return new Date(aText) - new Date(bText);
-        } else {
-            return aText.localeCompare(bText);
+        if (filterSelect === 'date') {
+            aText = new Date(aText);
+            bText = new Date(bText);
+        } else if (filterSelect === 'time') {
+            aText = new Date(`1970-01-01T${aText}`);
+            bText = new Date(`1970-01-01T${bText}`);
         }
+
+        let comparison = 0;
+        if (aText > bText) {
+            comparison = 1;
+        } else if (aText < bText) {
+            comparison = -1;
+        }
+
+        return sortAscending ? comparison : -comparison;
     });
 
     logTableBody.innerHTML = '';
@@ -145,8 +181,27 @@ function sortLogsViews() {
     rows.forEach(row => logTableBodyViews.appendChild(row));
 }
 
+function filterByDate() {
+    const datePicker = document.getElementById('datePicker');
+    const selectedDate = datePicker.value;
+    
+    if (!selectedDate) {
+        alert('Please select a date');
+        return;
+    }
+
+    const filteredLogs = allLogs.filter(log => log.visit_date.startsWith(selectedDate));
+    displayLogs(filteredLogs);
+}
+
+function clearDateFilter() {
+    document.getElementById('datePicker').value = '';
+    displayLogs(allLogs);
+}
+
 document.getElementById('searchInput').addEventListener('input', filterLogs);
 document.getElementById('filterSelect').addEventListener('change', sortLogs);
+document.getElementById('sortAscending').addEventListener('change', sortLogs);
 
 document.getElementById('searchInputViews').addEventListener('input', filterLogsViews);
 document.getElementById('filterSelectViews').addEventListener('change', sortLogsViews);

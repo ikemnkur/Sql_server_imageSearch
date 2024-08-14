@@ -4,7 +4,8 @@
   "description": "An app to view, upload and comment on images",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon geoip_server.js"
   },
   "dependencies": {
     "axios": "^1.7.4",
@@ -12,6 +13,7 @@
     "ejs": "^3.1.6",
     "express": "^4.17.1",
     "mysql2": "^3.11.0",
+    "nodemon": "^3.1.4",
     "ws": "^7.4.6"
   },
   "author": "",

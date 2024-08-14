@@ -44,7 +44,16 @@
                 <option value="region">Region</option>
                 <option value="city">City</option>
             </select>
+            <label>
+                <input type="checkbox" id="sortAscending" checked> Ascending
+            </label>
             <button onclick="sortLogs()">Sort</button>
+            <div>
+                <label for="datePicker">Filter by date:</label>
+                <input type="date" id="datePicker">
+                <button onclick="filterByDate()">Apply Date Filter</button>
+                <button onclick="clearDateFilter()">Clear Date Filter</button>
+            </div>
             <table>
                 <thead>
                     <tr>

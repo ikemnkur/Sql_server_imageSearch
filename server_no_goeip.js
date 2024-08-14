@@ -2,7 +2,6 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const path = require('path');
-const axios = require('axios'); // Add axios for making HTTP requests
 const app = express();
 const port = process.env.PORT || 5000;
 const startTime = new Date();
@@ -31,7 +30,6 @@ db.connect(err => {
   }
 });
 
-
 // Middleware to check request rate
 const lastRequestTimestamps = {};
 
@@ -45,55 +43,31 @@ const rateLimiter = (req, res, next) => {
 
   // Log the visit to the SQL database
   const imageId = req.params.id;
-  const nickname = req.params.nickname;
-  logVisitToDatabase(ip, imageId, nickname);
+  logVisitToDatabase(ip, imageId);
 
   lastRequestTimestamps[ip] = now;
   next();
 };
 
 // Function to log visits to the SQL database
-const logVisitToDatabase = async (ip, imageId, nickname) => {
+const logVisitToDatabase = (ip, imageId) => {
   const currentDate = new Date();
   const formattedDate = currentDate.toISOString().split('T')[0];
   const formattedTime = currentDate.toTimeString().split(' ')[0];
 
-  try {
-    // Fetch location data using ip-api
-    const response = await axios.get(`ip-api.com/json`);
-    const { country, regionName, city, lat, lon } = response.data;
-
-    const sql = `
-      INSERT INTO logs (image_id, nickname, ip, visit_date, visit_time, country, region, city, latitude, longitude)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    db.query(sql, [imageId, nickname, ip, formattedDate, formattedTime, country, regionName, city, lat, lon], (err, result) => {
-      if (err) {
-        console.error('Error inserting log into database:', err);
-      } else {
-        console.log(`Logged visit: IP ${ip} visited Image#${imageId} from ${city}, ${regionName}, ${country}`);
-      }
-    });
-  } catch (error) {
-    console.error('Error fetching GeoIP data:', error);
-    // Log without location data if the GeoIP lookup fails
-    const fallbackSql = `
-      INSERT INTO logs (image_id, ip, visit_date, visit_time)
-      VALUES (?, ?, ?, ?)
-    `;
-    db.query(fallbackSql, [imageId, ip, formattedDate, formattedTime], (err, result) => {
-      if (err) {
-        console.error('Error inserting fallback log into database:', err);
-      } else {
-        console.log(`Logged visit: IP ${ip} visited Image#${imageId} (Location unknown)`);
-      }
-    });
-  }
+  const sql = "INSERT INTO logs (image_id, ip, visit_date, visit_time) VALUES (?, ?, ?, ?)";
+  db.query(sql, [imageId, ip, formattedDate, formattedTime], (err, result) => {
+    if (err) {
+      console.error('Error inserting log into database:', err);
+    } else {
+      console.log(`Logged visit: IP ${ip} visited Image#${imageId}`);
+    }
+  });
 };
 
 // Endpoint to get visit logs
 app.get('/logs', (req, res) => {
-  const sql = "SELECT image_id, nickname, ip, visit_date, visit_time, country, region, city, latitude, longitude FROM logs";
+  const sql = "SELECT * FROM logs";
   db.query(sql, (err, results) => {
     if (err) {
       console.error('Error retrieving logs:', err);
@@ -137,24 +111,17 @@ app.patch('/images/:id/views', rateLimiter, (req, res) => {
   });
 });
 
-
-// Update view count and log the nickname
+// Update view count
 app.post('/images/:id/views', rateLimiter, (req, res) => {
   const { id } = req.params;
-  const { nickname } = req.body;
 
   if (!id) {
     return res.status(400).send('Image ID is required');
   }
 
-  if (!nickname) {
-    return res.status(400).send('Nickname is required');
-  }
+  const sql = 'UPDATE images SET views = views + 1 WHERE id = ?';
 
-  // Update the views count for the image
-  const sqlUpdateViews = 'UPDATE images SET views = views + 1 WHERE id = ?';
-
-  db.query(sqlUpdateViews, [id], (err, result) => {
+  db.query(sql, [id], (err, result) => {
     if (err) {
       console.error('Database error:', err);
       return res.status(500).send('Internal Server Error');
@@ -164,28 +131,9 @@ app.post('/images/:id/views', rateLimiter, (req, res) => {
       return res.status(404).send('Image not found');
     }
 
-    // Log the view along with the nickname
-    const sqlLogView = `
-      INSERT INTO logs (image_id, nickname, ip, visit_date, visit_time)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-
-    const currentDate = new Date();
-    const formattedDate = currentDate.toISOString().split('T')[0];
-    const formattedTime = currentDate.toTimeString().split(' ')[0];
-
-    db.query(sqlLogView, [id, nickname, req.ip, formattedDate, formattedTime], (err, result) => {
-      if (err) {
-        console.error('Error logging view into database:', err);
-        return res.status(500).send('Internal Server Error');
-      }
-
-      res.status(200).send({ message: 'Views updated and logged successfully' });
-    });
+    res.status(200).send({ message: 'Views updated successfully' });
   });
 });
-
-
 
 // Update likes or dislikes
 app.patch('/images/:id/:action', (req, res) => {
