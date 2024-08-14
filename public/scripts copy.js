@@ -16,15 +16,9 @@ function displayLogs(logs) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${log.image_id}</td>
-            <td>${log.nickname || 'N/A'}</td>
             <td>${log.ip}</td>
             <td>${log.visit_date}</td>
             <td>${log.visit_time}</td>
-            <td>${log.country || 'N/A'}</td>
-            <td>${log.region || 'N/A'}</td>
-            <td>${log.city || 'N/A'}</td>
-            <td>${log.latitude || 'N/A'}</td>
-            <td>${log.longitude || 'N/A'}</td>
         `;
         logTableBody.appendChild(row);
     });
@@ -52,7 +46,6 @@ function displayViewCounts(logs) {
         logTableBodyViews.appendChild(row);
     };
 }
-
 
 function filterLogs() {
     const searchInput = document.getElementById('searchInput').value.toLowerCase();
@@ -100,19 +93,8 @@ function sortLogs() {
     const rows = Array.from(logTableBody.getElementsByTagName('tr'));
 
     rows.sort((a, b) => {
-        const columnIndex = {
-            'imageId': 0,
-            'nickname': 1,
-            'ip': 2,
-            'date': 3,
-            'time': 4,
-            'country': 5,
-            'region': 6,
-            'city': 7
-        }[filterSelect] || 0;
-
-        const aText = a.getElementsByTagName('td')[columnIndex].innerText;
-        const bText = b.getElementsByTagName('td')[columnIndex].innerText;
+        const aText = a.getElementsByTagName('td')[filterSelect === 'imageId' ? 0 : filterSelect === 'ip' ? 1 : filterSelect === 'date' ? 2 : 3].innerText;
+        const bText = b.getElementsByTagName('td')[filterSelect === 'imageId' ? 0 : filterSelect === 'ip' ? 1 : filterSelect === 'date' ? 2 : 3].innerText;
 
         if (filterSelect === 'date' || filterSelect === 'time') {
             return new Date(aText) - new Date(bText);
