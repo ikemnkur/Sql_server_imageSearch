@@ -39,14 +39,14 @@ const rateLimiter = (req, res, next) => {
   const ip = req.ip;
   const now = Date.now();
 
-  if (lastRequestTimestamps[ip] && now - lastRequestTimestamps[ip] < 3000) {
+  if (lastRequestTimestamps[ip] && now - lastRequestTimestamps[ip] < 5000) {
     return res.status(429).send('Too many requests. Please wait a few seconds before trying again.');
   }
 
-  // Log the visit to the SQL database
-  const imageId = req.params.id;
-  const nickname = req.params.nickname;
-  logVisitToDatabase(ip, imageId, nickname);
+  // // Log the visit to the SQL database
+  // const imageId = req.params.id;
+  // const nickname = req.params.nickname;
+  // logVisitToDatabase(ip, imageId, nickname);
 
   lastRequestTimestamps[ip] = now;
   next();
@@ -62,7 +62,7 @@ const logVisitToDatabase = async (ip, imageId, nickname) => {
     // Fetch location data using ip-api
     const response = await axios.get(`http://ip-api.com/json`);
     const { country, regionName, city, lat, lon } = response.data;
-    console.log(country, regionName, city, lat, lon)
+    // console.log(country, regionName, city, lat, lon)
 
     const sql = `INSERT INTO logs (image_id, nickname, ip, visit_date, visit_time, country, region, city, latitude, longitude)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -140,7 +140,7 @@ app.post('/images/:id/views', rateLimiter, (req, res) => {
   const { id } = req.params;
   const { nickname } = req.body;
 
-  console.log("nickename:"+ nickname)
+  // console.log("nickname:"+ nickname)
 
   if (!id) {
     return res.status(400).send('Image ID is required');
@@ -173,14 +173,16 @@ app.post('/images/:id/views', rateLimiter, (req, res) => {
     const formattedDate = currentDate.toISOString().split('T')[0];
     const formattedTime = currentDate.toTimeString().split(' ')[0];
 
-    db.query(sqlLogView, [id, nickname, req.ip, formattedDate, formattedTime], (err, result) => {
-      if (err) {
-        console.error('Error logging view into database:', err);
-        return res.status(500).send('Internal Server Error');
-      }
+    logVisitToDatabase(req.ip, id, nickname)
 
-      res.status(200).send({ message: 'Views updated and logged successfully' });
-    });
+    // db.query(sqlLogView, [id, nickname, req.ip, formattedDate, formattedTime], (err, result) => {
+    //   if (err) {
+    //     console.error('Error logging view into database:', err);
+    //     return res.status(500).send('Internal Server Error');
+    //   }
+
+    //   res.status(200).send({ message: 'Views updated and logged successfully' });
+    // });
   });
 });
 

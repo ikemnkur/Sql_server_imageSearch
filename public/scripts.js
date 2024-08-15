@@ -34,12 +34,17 @@ function displayLogs(logs) {
 }
 
 function displayViewCounts(logs, date = null) {
+    console.log("Displaying view counts for date:", date);
+    console.log("Number of logs:", logs.length);
+
     const logTableBodyViews = document.getElementById('logTableBodyViews');
     logTableBodyViews.innerHTML = '';
 
     const viewCounts = {};
     logs.forEach(log => {
-        if (date && log.visit_date.split(' ')[0] !== date) {
+        const logDate = new Date(log.visit_date).toISOString().split('T')[0];
+        console.log("Log date:", logDate, "Selected date:", date);
+        if (date && logDate !== date) {
             return;
         }
         if (viewCounts[log.image_id]) {
@@ -48,6 +53,8 @@ function displayViewCounts(logs, date = null) {
             viewCounts[log.image_id] = 1;
         }
     });
+
+    console.log("View counts:", viewCounts);
 
     for (const [imageId, count] of Object.entries(viewCounts)) {
         const row = document.createElement('tr');
@@ -63,47 +70,37 @@ function displayViewCounts(logs, date = null) {
 
 function filterLogs() {
     const searchInput = document.getElementById('searchInput').value.toLowerCase();
+    const filterSelect = document.getElementById('filterSelect').value;
     const logTableBody = document.getElementById('logTableBody');
     const rows = logTableBody.getElementsByTagName('tr');
 
-    for (let i = 0; i < rows.length; i++) {
-        const cells = rows[i].getElementsByTagName('td');
-        let match = false;
-
-        for (let j = 0; j < cells.length; j++) {
-            if (cells[j].innerText.toLowerCase().includes(searchInput)) {
-                match = true;
-                break;
-            }
-        }
-
-        rows[i].style.display = match ? '' : 'none';
-    }
-}
-
-
-function filterLogs() {
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-    const logTableBody = document.getElementById('logTableBody');
-    const rows = logTableBody.getElementsByTagName('tr');
+    const columnIndex = {
+        'imageId': 0,
+        'nickname': 1,
+        'ip': 2,
+        'date': 3,
+        'time': 4,
+        'country': 5,
+        'region': 6,
+        'city': 7,
+        'latitude': 8,
+        'longitude': 9
+    }[filterSelect];
 
     for (let i = 0; i < rows.length; i++) {
-        const cells = rows[i].getElementsByTagName('td');
-        let match = false;
+        const cell = rows[i].getElementsByTagName('td')[columnIndex];
+        const cellText = cell.textContent || cell.innerText;
 
-        for (let j = 0; j < cells.length; j++) {
-            if (cells[j].innerText.toLowerCase().includes(searchInput)) {
-                match = true;
-                break;
-            }
+        if (cellText.toLowerCase().includes(searchInput)) {
+            rows[i].style.display = '';
+        } else {
+            rows[i].style.display = 'none';
         }
-
-        rows[i].style.display = match ? '' : 'none';
     }
 }
 
 function filterLogsViews() {
-    const searchInputViews = document.getElementById('searchInputViews').value.toLowerCase();
+    const searchInput = document.getElementById('searchInputViews').value.toLowerCase();
     const logTableBodyViews = document.getElementById('logTableBodyViews');
     const rows = logTableBodyViews.getElementsByTagName('tr');
 
@@ -112,7 +109,7 @@ function filterLogsViews() {
         let match = false;
 
         for (let j = 0; j < cells.length; j++) {
-            if (cells[j].innerText.toLowerCase().includes(searchInputViews)) {
+            if (cells[j].innerText.toLowerCase().includes(searchInput)) {
                 match = true;
                 break;
             }
@@ -212,6 +209,9 @@ function filterViewsByDate() {
         return;
     }
 
+    console.log("Filtering views for date:", selectedDate);
+    console.log("All logs:", allLogs);
+
     displayViewCounts(allLogs, selectedDate);
 }
 
@@ -220,12 +220,29 @@ function clearViewsDateFilter() {
     displayViewCounts(allLogs);
 }
 
+function updateSearchPlaceholder() {
+    const filterSelect = document.getElementById('filterSelect');
+    const searchInput = document.getElementById('searchInput');
+    searchInput.placeholder = `Search by ${filterSelect.options[filterSelect.selectedIndex].text}`;
+}
 
+document.getElementById('filterSelect').addEventListener('change', () => {
+    updateSearchPlaceholder();
+    filterLogs();
+    sortLogs();
+});
+
+// Update event listeners
 document.getElementById('searchInput').addEventListener('input', filterLogs);
-document.getElementById('filterSelect').addEventListener('change', sortLogs);
+// document.getElementById('filterSelect').addEventListener('change', () => {
+//     filterLogs();
+//     sortLogs();
+// });
 document.getElementById('sortAscending').addEventListener('change', sortLogs);
 
 document.getElementById('searchInputViews').addEventListener('input', filterLogsViews);
 document.getElementById('filterSelectViews').addEventListener('change', sortLogsViews);
 
 window.onload = loadLogs;
+// Call this function on page load to set the initial placeholder
+window.addEventListener('load', updateSearchPlaceholder);
