@@ -33,12 +33,15 @@ function displayLogs(logs) {
     });
 }
 
-function displayViewCounts(logs) {
+function displayViewCounts(logs, date = null) {
     const logTableBodyViews = document.getElementById('logTableBodyViews');
-    logTableBodyViews.innerHTML = ''; 
+    logTableBodyViews.innerHTML = '';
 
     const viewCounts = {};
     logs.forEach(log => {
+        if (date && log.visit_date.split(' ')[0] !== date) {
+            return;
+        }
         if (viewCounts[log.image_id]) {
             viewCounts[log.image_id]++;
         } else {
@@ -48,13 +51,14 @@ function displayViewCounts(logs) {
 
     for (const [imageId, count] of Object.entries(viewCounts)) {
         const row = document.createElement('tr');
-        row.innerHTML = 
-           `<td>${imageId}</td> 
-            <td>${count}</td>`
-        ;
+        row.innerHTML = `
+            <td>${imageId}</td>
+            <td>${count}</td>
+        `;
         logTableBodyViews.appendChild(row);
-    };
+    }
 }
+
 
 
 function filterLogs() {
@@ -171,7 +175,7 @@ function sortLogsViews() {
         const bText = b.getElementsByTagName('td')[filterSelectViews === 'imageId' ? 0 : 1].innerText;
 
         if (filterSelectViews === 'views') {
-            return parseInt(bText) - parseInt(aText); 
+            return parseInt(bText) - parseInt(aText);
         } else {
             return aText.localeCompare(bText);
         }
@@ -198,6 +202,24 @@ function clearDateFilter() {
     document.getElementById('datePicker').value = '';
     displayLogs(allLogs);
 }
+
+function filterViewsByDate() {
+    const datePickerViews = document.getElementById('datePickerViews');
+    const selectedDate = datePickerViews.value;
+    
+    if (!selectedDate) {
+        alert('Please select a date');
+        return;
+    }
+
+    displayViewCounts(allLogs, selectedDate);
+}
+
+function clearViewsDateFilter() {
+    document.getElementById('datePickerViews').value = '';
+    displayViewCounts(allLogs);
+}
+
 
 document.getElementById('searchInput').addEventListener('input', filterLogs);
 document.getElementById('filterSelect').addEventListener('change', sortLogs);

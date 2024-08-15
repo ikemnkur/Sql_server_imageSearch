@@ -19,6 +19,12 @@
                 <option value="imageId">Image ID</option>
             </select>
             <button onclick="sortLogsViews()">Sort</button>
+            <div>
+                <label for="datePickerViews">Filter by date:</label>
+                <input type="date" id="datePickerViews">
+                <button onclick="filterViewsByDate()">Apply Date Filter</button>
+                <button onclick="clearViewsDateFilter()">Clear Date Filter</button>
+            </div>
             <table>
                 <thead>
                     <tr>
